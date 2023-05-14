@@ -1,81 +1,8 @@
-
-const main = document.querySelector("main");
+import { board } from "./Board.js";
+import { King, Queen,Rook,Bishop,Horse, Pawn } from "./Piece.js";
 
 const white = "w";
 const black = "b";
-
-var selected = null;
-
-var images = [
-["https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Chess_klt45.svg/45px-Chess_klt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Chess_kdt45.svg/45px-Chess_kdt45.svg.png"],
-["https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Chess_qlt45.svg/45px-Chess_qlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Chess_qdt45.svg/45px-Chess_qdt45.svg.png"],
-["https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Chess_rlt45.svg/45px-Chess_rlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Chess_rdt45.svg/45px-Chess_rdt45.svg.png"],
-["https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Chess_blt45.svg/45px-Chess_blt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Chess_bdt45.svg/45px-Chess_bdt45.svg.png"],
-["https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Chess_nlt45.svg/45px-Chess_nlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Chess_ndt45.svg/45px-Chess_ndt45.svg.png"],
-["https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Chess_plt45.svg/45px-Chess_plt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Chess_pdt45.svg/45px-Chess_pdt45.svg.png"]
-];
-
-function nameToNumber(name){
-    switch (name){
-        case "King":
-            return 0;
-        case "Queen":
-            return 1;
-        case "Rook":
-            return 2;
-        case "Bishop":
-            return 3;
-        case "Horse":
-            return 4;
-        case "Pawn":
-            return 5;
-    }
-}
-
-function checkPosition(a,b){
-    if(a>=97 && a<= 104 && b >= 1 && b <= 8){
-        return document.querySelector(`#${String.fromCharCode(a)}${b}`);
-    }
-    else{
-        return false;
-    }
-}
-
-function createCircle(x,y,ip,jp){
-    let circle = document.createElement("div");
-        circle.setAttribute("class","circulo");
-        circle.setAttribute("x",String.fromCharCode(x.charCodeAt(0)+ip));
-        circle.setAttribute("y",y+jp);
-        circle.addEventListener("click",() => {
-        selected.move(circle.getAttribute("x"),circle.getAttribute("y"));
-        selected=null;
-     });
-    return circle;
-}
-
-function createSquares(){
-    var paint;
-    for(var i=8; i>=1;i--){
-        paint=i%2;
-        for(var j=1; j<=8;j++){
-            let div = document.createElement("div");
-            div.setAttribute("id",`${String.fromCharCode(97 + j-1)}${i}`);
-            div.addEventListener("click",(e) => {
-                if (e.target !== e.currentTarget)
-                    return;
-                document.querySelectorAll(".circulo").forEach(element => element.remove());
-                selected = null;
-            })
-            if(paint){
-                div.style.background = "rgb(88, 83, 83)";
-                paint=false;   
-            }else{
-                paint=true;
-            }
-            main.appendChild(div);
-        }
-    }
-}
 
 function startGame(){
     let Wking = new King("e",1,white);
@@ -99,12 +26,15 @@ function startGame(){
     let BLrook = new Rook("a",8,black);
     let BRrook = new Rook("h",8,black);
     for(var i=0; i<8;i++){
-        let pawn = new Pawn(`${String.fromCharCode(97+i)}`,2,white);
+        let Wpawn = new Pawn(`${String.fromCharCode(97+i)}`,2,white);
+        let Bpawn = new Pawn(`${String.fromCharCode(97+i)}`,7,black);
+        board.insertPieces([Wpawn,Bpawn]);
     }
-    for(var i=0; i<8;i++){
-        let pawn = new Pawn(`${String.fromCharCode(97+i)}`,7,black);
-    }
+    board.insertPieces([Wking,Bking]);
+    board.insertPieces([Wqueen,Bqueen]);
+    board.insertPieces([WLbishop,WRbishop,BLbishop,BRbishop]);
+    board.insertPieces([WLhorse,WRhorse,BLhorse,BRhorse]);
+    board.insertPieces([WLrook,WRrook,BLrook,BRrook]);
 }
 
-createSquares();
 startGame();
