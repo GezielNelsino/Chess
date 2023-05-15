@@ -31,20 +31,20 @@ function nameToNumber(name){
 
 function checkPosition(a,b){
     if(a>=97 && a<= 104 && b >= 1 && b <= 8){
-        return document.querySelector(`#${String.fromCharCode(a)}${b}`);
+        return board.getSquareWithCoordinates(a,b);
     }
     else{
-        return false;
+        return null;
     }
 }
 
-function createCircle(x,y,ip,jp){
+function createCircle(square){
     let circle = document.createElement("div");
-        circle.setAttribute("class","circulo");
-        circle.setAttribute("x",String.fromCharCode(x.charCodeAt(0)+ip));
-        circle.setAttribute("y",y+jp);
-        circle.addEventListener("click",() => {
-        board.selected.move(circle.getAttribute("x"),circle.getAttribute("y"));
+    circle.setAttribute("class","circulo");
+    circle.setAttribute("x",square.getPosX());
+    circle.setAttribute("y",square.getPosY());
+    circle.addEventListener("click",() => {
+        board.selected.move(square.getPosX(),square.getPosY());
         board.selected=null;
      });
     return circle;
@@ -60,6 +60,8 @@ class Piece {
         this.value = document.createElement("img");
         this.value.setAttribute("team",this.team);
         this.value.src = `${(this.team == "w"?images[nameToNumber(this.name)][0]:images[nameToNumber(this.name)][1])}`;
+        this.possibleMoves = [];
+        this.validMoves = [];
     }
 
     getPosX(){
@@ -74,23 +76,36 @@ class Piece {
         document.querySelector(`#${this.posX}${this.posY}`).appendChild(this.value);
     }
 
-    propagation(i,j,ip,jp,shoudPaint){
-        while(checkPosition(this.posX.charCodeAt(0)+ip,this.posY+jp)!=false){            
+    propagation(i,j,ip,jp){
+        while(checkPosition(this.posX.charCodeAt(0)+ip,this.posY+jp)!=null){
             let square = checkPosition(this.posX.charCodeAt(0)+ip,this.posY+jp);
-            let circle = createCircle(this.posX,this.posY,ip,jp);
-            square.appendChild(circle); 
+            let valid;
+            if(this.name == "King"){
+                if((square.piece==null || square.piece.team != this.team) && (this.team==white && !board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByBlack 
+                || this.team==black && !board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByWhite)){
+                    valid = true;
+                    this.possibleMoves.push(square);
+                }
+            }else{
+                valid = true;
+                this.possibleMoves.push(square);
+            }
             if(ip!=0 || jp!=0){
                 if(this.team==white){
-                    board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByWhite = true;
+                    board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).isAffectedByWhite = true;
                 }else{
-                    board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByBlack = true;
+                    board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).isAffectedByBlack = true;
                 }  
             }
-            if(square.firstChild.getAttribute("class")!="circulo"){
-                if(square.firstChild == null || (this.team != square.firstElementChild.getAttribute("team"))){
-                    circle.setAttribute("id","upper");
+            if(valid && square.piece!=null){
+                if(square.value.firstElementChild != null &&this.team != square.value.firstElementChild.getAttribute("team")){
+                    if(board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).piece.name=="King"){
+                        ip+=i;
+                        jp+=j;
+                        continue;
+                    }
                 }else{
-                    circle.remove();
+                    this.possibleMoves.pop();
                 }
                 break;
             }     
@@ -100,9 +115,6 @@ class Piece {
             ip+=i;
             jp+=j;
         }
-        if(!shoudPaint){
-            document.querySelectorAll(".circulo").forEach(element => element.remove());
-        }
     }
 
     move(x,y){
@@ -111,27 +123,88 @@ class Piece {
         this.posY = parseInt(y);
         document.querySelectorAll(".circulo").forEach(element => element.remove());
         if(document.querySelector(`#${this.posX}${this.posY}`).firstChild){
-            board.removePiecesOfList(board.squares[board.selected.getPosX().charCodeAt(0)-97][board.selected.getPosY()-1].piece);
+            board.removePiecesOfList(board.getSquare(board.selected).piece);
             document.querySelector(`#${this.posX}${this.posY}`).firstChild.remove();
         }
-        board.squares[board.selected.getPosX().charCodeAt(0)-97][board.selected.getPosY()-1].piece = board.selected;
-        this.setPosition();  
-        board.setAffected();   
+        board.getSquare(board.selected).piece = board.selected;
+        this.setPosition(); 
+        board.turn = !board.turn;
+        board.setAffected();  
+        board.checkKingThreatened(board.selected.team==white?black:white);
+    }
+
+    drawPossiblePositions(){        
+        this.validMoves = [];
+        this.possibleMoves.forEach(square => {
+            if(this.checkValidMove(square.getPosX(),square.getPosY())){
+            let circle = createCircle(square);
+            this.validMoves.push(square);    
+            if(square.piece != null && (square.isAffectedByWhite || square.isAffectedByBlack) && square.piece.team != this.team){
+                    circle.setAttribute("id","upper");
+                }
+                board.squares[square.getPosX().charCodeAt(0)-97][square.getPosY()-1].value.appendChild(circle);
+            }                
+        });
+    }
+
+    getPossiblePositions(){
+        this.validMoves = [];
+        this.possibleMoves.forEach(square => {
+            if(this.checkValidMove(square.getPosX(),square.getPosY())){
+                this.validMoves.push(square);
+            }
+        });
+    }
+
+    checkValidMove(x,y){       
+        board.removePiecesOfList(board.getSquare(this).piece);
+        board.removePiecesOfBoard(board.getSquare(this).piece);
+        let a = this.posX;
+        let b = this.posY;
+        let piece = null;
+        this.posX = x;
+        this.posY = parseInt(y);
+        if(document.querySelector(`#${this.posX}${this.posY}`).firstChild){
+            piece = board.squares[this.getPosX().charCodeAt(0)-97][this.getPosY()-1].piece;
+            board.removePiecesOfList(board.getSquare(piece).piece);
+            board.removePiecesOfBoard(board.getSquare(piece).piece);
+        }
+        board.getSquare(this).piece = this;
+        board.setAffected();
+        let valid = !((this.team==white)?board.wKing.threatened:board.bKing.threatened);  
+        board.removePiecesOfBoard(board.getSquare(this).piece);  
+        this.posX = a;
+        this.posY = b;
+        board.getSquare(this).piece = this;
+        board.insertPieces([this]);
+        if(piece !=null){
+            board.insertPieces([piece]);
+            piece.setPosition();
+        }
+        this.setPosition();
+        board.setAffected();  
+        return valid;
     }
 
     setEvents(){
         this.value.addEventListener("click",() =>{
-            if(board.selected == null){
-                board.selected = this;
-                this.getPossiblePositions(true);               
-            }else if(board.selected != this){
-                document.querySelectorAll(".circulo").forEach(element => element.remove());
-                board.selected = this;
-                this.getPossiblePositions(true);               
-            }else{
-                document.querySelectorAll(".circulo").forEach(element => element.remove());
-                board.selected = null;
-            }
+            if(board.turn && this.team==white || !board.turn && this.team==black){
+                if(board.selected == null){
+                    board.selected = this;
+                    this.possibleMoves = [];
+                    this.setPossiblePositions();               
+                    this.drawPossiblePositions();               
+                }else if(board.selected != this){
+                    document.querySelectorAll(".circulo").forEach(element => element.remove());
+                    board.selected = this;
+                    this.possibleMoves = [];
+                    this.setPossiblePositions();               
+                    this.drawPossiblePositions();               
+                }else{
+                    document.querySelectorAll(".circulo").forEach(element => element.remove());
+                    board.selected = null;
+                }
+            }            
         });
         this.setPosition();
     }
@@ -140,14 +213,22 @@ class Piece {
 class King extends Piece {
     constructor(posX,posY,team) {
         super(posX, posY,team,"King",true);
+        this.threatened = false;
         this.setEvents();
     }
-    getPossiblePositions(shoudPaint){
+    move(i,j,actualBoard){
+        if(this.threatened){
+            this.threatened = false;
+        }
+        board.paintKingSquare(this);
+        super.move(i,j,actualBoard);
+    }
+    setPossiblePositions(){
         for(let i=-1;i<=1;i++){
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
-                this.propagation(i,j,ip,jp,shoudPaint);    
+                this.propagation(i,j,ip,jp);    
             }                
         }
     }
@@ -158,28 +239,29 @@ class Queen extends Piece {
         super(posX,posY,team,"Queen",false);
         this.setEvents();
     }
-    getPossiblePositions(shoudPaint){
+    setPossiblePositions(){
         for(let i=-1;i<=1;i++){
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
-                this.propagation(i,j,ip,jp,shoudPaint);    
+                this.propagation(i,j,ip,jp);    
             }                
         }
     }
 }
+
 class Rook extends Piece {
     constructor(posX,posY, team) {
         super(posX,posY,team,"Rook",false);
         this.setEvents();
     }
-    getPossiblePositions(shoudPaint){
+    setPossiblePositions(){
         for(let i=-1;i<=1;i++){
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
                 if((i==0 || j==0)){
-                    this.propagation(i,j,ip,jp,shoudPaint);
+                    this.propagation(i,j,ip,jp);
                 }
             }                
         }
@@ -191,13 +273,13 @@ class Bishop extends Piece {
         super(posX,posY,team,"Bishop",false);
         this.setEvents();
     }
-    getPossiblePositions(shoudPaint){
+    setPossiblePositions(){
         for(let i=-1;i<=1;i++){
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
                 if(i!=0 && j!=0){
-                    this.propagation(i,j,ip,jp,shoudPaint);
+                    this.propagation(i,j,ip,jp);
                 }
             }                
         }
@@ -210,13 +292,13 @@ class Horse extends Piece {
         this.isLimited = true;
         this.setEvents();
     }
-    getPossiblePositions(shoudPaint){
+    setPossiblePositions(){
         for(let i=-2;i<=2;i++){
             for(let j=-2;j<=2;j++){
                 let ip = i;
                 let jp = j;
                 if((i!=0 && j!=0) && (i!=j) && (i!=-j) && (!(i%2) || !(j%2))){
-                    this.propagation(i,j,ip,jp,shoudPaint);
+                    this.propagation(i,j,ip,jp);
                 }
             }                
         }
@@ -232,7 +314,7 @@ class Pawn extends Piece {
     move(i,j,ip,jp){
         super.move(i,j,ip,jp);
         this.isFirstMove = false;
-        if(this.getPosY() == 8){
+        if(this.getPosY() == 8 || this.getPosY() == 1){
             this.promote();
         }
     }
@@ -243,40 +325,36 @@ class Pawn extends Piece {
         let Pqueen = new Queen(this.getPosX(),this.getPosY(),this.team);
         board.insertPieces([Pqueen]);
         board.setAffected();   
+        board.checkKingThreatened(board.selected.team==white?black:white);
     }
 
     propagation(i,j,k){
-            let square = checkPosition(this.posX.charCodeAt(0)+i,this.posY+j);
-            let circle = createCircle(this.posX,this.posY,i,j); 
-            if((i==-1 || i==1) && square!=false){                    
-                if(square.firstElementChild!=null && (this.team != square.firstElementChild.getAttribute("team"))){
-                    circle.setAttribute("id","upper");
-                    square.appendChild(circle); 
-                }
-                if(this.team==white){
-                    board.squares[this.posX.charCodeAt(0)+i-97][this.posY+j-1].isAffectedByWhite = true;
-                }
-                else{
-                    board.squares[this.posX.charCodeAt(0)+i-97][this.posY+j-1].isAffectedByBlack = true;
-                } 
+        let square = checkPosition(this.posX.charCodeAt(0)+i,this.posY+j);
+        if((i==-1 || i==1) && square!=null){                    
+            if(square.piece!=null && (this.team != square.piece.team)){
+                this.possibleMoves.push(square);
+            }
+            if(this.team==white){
+                board.getSquareWithCoordinates(this.posX.charCodeAt(0)+i,this.posY+j).isAffectedByWhite = true;
             }
             else{
-                if(square!=false && square.firstChild==null){
-                    square.appendChild(circle); 
-                    if(this.isFirstMove && k==0){
-                        this.propagation(i,j+j,1);
-                    }
-                }
+                board.getSquareWithCoordinates(this.posX.charCodeAt(0)+i,this.posY+j).isAffectedByBlack = true;
             } 
+        }
+        else{
+            if(square!=null && square.piece == null){
+                this.possibleMoves.push(square);
+                if(this.isFirstMove && k==0){
+                    this.propagation(i,j+j,1);
+                }
+            }
+        } 
     }
 
-    getPossiblePositions(shoudPaint){
+    setPossiblePositions(){
         let j = -1;
         for(let i=-1;i<=1;i++){
-            this.propagation(i,j + 2*(this.team == white),0);  
-            if(!shoudPaint){
-                document.querySelectorAll(".circulo").forEach(element => element.remove());
-            }            
+            this.propagation(i,j + 2*(this.team == white),0);         
         }
     }
 }
