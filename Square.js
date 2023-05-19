@@ -17,7 +17,15 @@ export class Square{
         return this.posY;
     }
 
-    insertInto(piece){
+    getPiece(){
+        return this.piece;
+    }
+
+    getValue(){
+        return this.value;
+    }
+
+    setPiece(piece){
         this.piece = piece;
-    }  
+    }
 };

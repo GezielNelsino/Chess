@@ -1,41 +1,13 @@
 import { board } from "./Board.js";
 
-var images = [
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Chess_klt45.svg/45px-Chess_klt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Chess_kdt45.svg/45px-Chess_kdt45.svg.png"],
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Chess_qlt45.svg/45px-Chess_qlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Chess_qdt45.svg/45px-Chess_qdt45.svg.png"],
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Chess_rlt45.svg/45px-Chess_rlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Chess_rdt45.svg/45px-Chess_rdt45.svg.png"],
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Chess_blt45.svg/45px-Chess_blt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Chess_bdt45.svg/45px-Chess_bdt45.svg.png"],
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Chess_nlt45.svg/45px-Chess_nlt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Chess_ndt45.svg/45px-Chess_ndt45.svg.png"],
-    ["https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Chess_plt45.svg/45px-Chess_plt45.svg.png","https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Chess_pdt45.svg/45px-Chess_pdt45.svg.png"]
-];
-
 const white = "w";
 const black = "b";
-
-function nameToNumber(name){
-    switch (name){
-        case "King":
-            return 0;
-        case "Queen":
-            return 1;
-        case "Rook":
-            return 2;
-        case "Bishop":
-            return 3;
-        case "Horse":
-            return 4;
-        case "Pawn":
-            return 5;
-    }
-}
 
 function checkPosition(a,b){
     if(a>=97 && a<= 104 && b >= 1 && b <= 8){
         return board.getSquareWithCoordinates(a,b);
     }
-    else{
-        return null;
-    }
+    return null;
 }
 
 function createCircle(square){
@@ -45,7 +17,7 @@ function createCircle(square){
     circle.setAttribute("y",square.getPosY());
     circle.addEventListener("click",() => {
         board.selected.move(square.getPosX(),square.getPosY());
-        board.selected=null;
+        board.selected = null;
      });
     return circle;
 }
@@ -56,10 +28,11 @@ class Piece {
         this.posY = posY;      
         this.team = team;
         this.name = name;
-        this.isLimited=isLimited;
+        this.isLimited = isLimited;
         this.value = document.createElement("img");
         this.value.setAttribute("team",this.team);
-        this.value.src = `${(this.team == "w"?images[nameToNumber(this.name)][0]:images[nameToNumber(this.name)][1])}`;
+        this.value.src = `./images/${this.team}${this.name}.png`;
+        this.isFirstMove = true;
         this.possibleMoves = [];
         this.validMoves = [];
     }
@@ -79,17 +52,7 @@ class Piece {
     propagation(i,j,ip,jp){
         while(checkPosition(this.posX.charCodeAt(0)+ip,this.posY+jp)!=null){
             let square = checkPosition(this.posX.charCodeAt(0)+ip,this.posY+jp);
-            let valid;
-            if(this.name == "King"){
-                if((square.piece==null || square.piece.team != this.team) && (this.team==white && !board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByBlack 
-                || this.team==black && !board.squares[this.posX.charCodeAt(0)+ip-97][this.posY+jp-1].isAffectedByWhite)){
-                    valid = true;
-                    this.possibleMoves.push(square);
-                }
-            }else{
-                valid = true;
-                this.possibleMoves.push(square);
-            }
+            this.possibleMoves.push(square);
             if(ip!=0 || jp!=0){
                 if(this.team==white){
                     board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).isAffectedByWhite = true;
@@ -97,9 +60,9 @@ class Piece {
                     board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).isAffectedByBlack = true;
                 }  
             }
-            if(valid && square.piece!=null){
-                if(square.value.firstElementChild != null &&this.team != square.value.firstElementChild.getAttribute("team")){
-                    if(board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).piece.name=="King"){
+            if(square.getPiece()!=null){
+                if(this.team != square.getPiece().team){
+                    if(board.getSquareWithCoordinates(this.posX.charCodeAt(0)+ip,this.posY+jp).getPiece().name=="King"){
                         ip+=i;
                         jp+=j;
                         continue;
@@ -118,32 +81,51 @@ class Piece {
     }
 
     move(x,y){
-        board.removePiecesOfBoard(board.selected);
+        if(this.isFirstMove && this.name=="King"){
+            if(x == "g" && ((y == 1 && this == board.wKing) || (y==8 && this == board.bKing))){
+                board.getSquareWithCoordinates("h".charCodeAt(0),this.posY).getPiece().move("f",this.posY);      
+                board.setTurn(!board.getTurn());
+            }else if(x == "c" && ((y == 1 && this == board.wKing) || (y==8 && this == board.bKing))){
+                board.getSquareWithCoordinates("a".charCodeAt(0),this.posY).getPiece().move("d",this.posY);
+                board.setTurn(!board.getTurn());
+            }
+        }
+        else if(this.name=="Pawn"){
+            if(x != this.posX && board.getSquareWithCoordinates(x.charCodeAt(0),y).getPiece()==null){
+                board.removePiecesOfList(board.getSquareWithCoordinates(x.charCodeAt(0),this.posY).getPiece());
+                board.removePiecesOfBoard(board.getSquareWithCoordinates(x.charCodeAt(0),this.posY).getPiece());
+            }
+        }
+        board.removePiecesOfBoard(this);
         this.posX = x;
         this.posY = parseInt(y);
         document.querySelectorAll(".circulo").forEach(element => element.remove());
         if(document.querySelector(`#${this.posX}${this.posY}`).firstChild){
-            board.removePiecesOfList(board.getSquare(board.selected).piece);
-            document.querySelector(`#${this.posX}${this.posY}`).firstChild.remove();
+            board.removePiecesOfList(board.getSquare(this).getPiece());
+            board.removePiecesOfBoard(board.getSquare(this).getPiece());
         }
-        board.getSquare(board.selected).piece = board.selected;
+        board.getSquare(this).piece = this;
         this.setPosition(); 
-        board.turn = !board.turn;
-        board.setAffected();  
-        board.checkKingThreatened(board.selected.team==white?black:white);
+        board.setTurn(!board.getTurn());
+        board.setAffected(); 
+        board.resetEnPassant(this.team);
+        board.checkKingThreatened(this.team==white?black:white);
+        if(this.name != "Pawn"){
+            this.isFirstMove = false;
+        }
     }
 
-    drawPossiblePositions(){        
+    drawPossiblePositions(){
         this.validMoves = [];
         this.possibleMoves.forEach(square => {
             if(this.checkValidMove(square.getPosX(),square.getPosY())){
             let circle = createCircle(square);
             this.validMoves.push(square);    
-            if(square.piece != null && (square.isAffectedByWhite || square.isAffectedByBlack) && square.piece.team != this.team){
+            if(square.getPiece() != null && (square.isAffectedByWhite || square.isAffectedByBlack) && square.getPiece().team != this.team){
                     circle.setAttribute("id","upper");
                 }
                 board.squares[square.getPosX().charCodeAt(0)-97][square.getPosY()-1].value.appendChild(circle);
-            }                
+            }
         });
     }
 
@@ -156,55 +138,55 @@ class Piece {
         });
     }
 
-    checkValidMove(x,y){       
-        board.removePiecesOfList(board.getSquare(this).piece);
-        board.removePiecesOfBoard(board.getSquare(this).piece);
-        let a = this.posX;
-        let b = this.posY;
+    checkValidMove(x,y){
+        board.removePiecesOfList(this);
+        board.removePiecesOfBoard(this);
+        let a = this.posX ;
+        let b = parseInt(this.posY);
         let piece = null;
         this.posX = x;
         this.posY = parseInt(y);
-        if(document.querySelector(`#${this.posX}${this.posY}`).firstChild){
-            piece = board.squares[this.getPosX().charCodeAt(0)-97][this.getPosY()-1].piece;
-            board.removePiecesOfList(board.getSquare(piece).piece);
-            board.removePiecesOfBoard(board.getSquare(piece).piece);
+        if(board.getSquare(this).piece != null){
+            piece = board.getSquare(this).getPiece();
+            board.removePiecesOfList(piece);
+            board.removePiecesOfBoard(piece);
         }
-        board.getSquare(this).piece = this;
+        board.insertPieces([this]);
         board.setAffected();
-        let valid = !((this.team==white)?board.wKing.threatened:board.bKing.threatened);  
-        board.removePiecesOfBoard(board.getSquare(this).piece);  
+        let valid = !((this.team==white)?board.wKing.threatened:board.bKing.threatened);
+        board.removePiecesOfList(this);
+        board.removePiecesOfBoard(this);
         this.posX = a;
         this.posY = b;
-        board.getSquare(this).piece = this;
         board.insertPieces([this]);
-        if(piece !=null){
+        if(piece != null){
             board.insertPieces([piece]);
             piece.setPosition();
         }
         this.setPosition();
-        board.setAffected();  
+        board.setAffected();
         return valid;
     }
 
     setEvents(){
         this.value.addEventListener("click",() =>{
-            if(board.turn && this.team==white || !board.turn && this.team==black){
+            if(board.getTurn() && this.team==white || !board.getTurn() && this.team==black){
                 if(board.selected == null){
                     board.selected = this;
                     this.possibleMoves = [];
-                    this.setPossiblePositions();               
-                    this.drawPossiblePositions();               
+                    this.setPossiblePositions();
+                    this.drawPossiblePositions();
                 }else if(board.selected != this){
                     document.querySelectorAll(".circulo").forEach(element => element.remove());
                     board.selected = this;
                     this.possibleMoves = [];
-                    this.setPossiblePositions();               
-                    this.drawPossiblePositions();               
+                    this.setPossiblePositions();
+                    this.drawPossiblePositions();
                 }else{
                     document.querySelectorAll(".circulo").forEach(element => element.remove());
                     board.selected = null;
                 }
-            }            
+            }
         });
         this.setPosition();
     }
@@ -216,21 +198,41 @@ class King extends Piece {
         this.threatened = false;
         this.setEvents();
     }
-    move(i,j,actualBoard){
+
+    CastlingPossible(){
+        if(this.isFirstMove && !this.threatened){
+            let leftSquare = board.getSquareWithCoordinates("a".charCodeAt(0),this.posY);
+            let rigthSquare = board.getSquareWithCoordinates("h".charCodeAt(0),this.posY);
+            if(leftSquare.getPiece()!=null && leftSquare.getPiece().name=="Rook" && leftSquare.getPiece().isFirstMove && board.getSquareWithCoordinates("b".charCodeAt(0),this.posY).getPiece()==null && board.getSquareWithCoordinates("c".charCodeAt(0),this.posY).getPiece()==null && board.getSquareWithCoordinates("d".charCodeAt(0),this.posY).getPiece()==null
+            && ((this.team== white && !board.getSquareWithCoordinates("d".charCodeAt(0),this.posY).isAffectedByBlack && !board.getSquareWithCoordinates("c".charCodeAt(0),this.posY).isAffectedByBlack)
+            ||(this.team== black && !board.getSquareWithCoordinates("d".charCodeAt(0),this.posY).isAffectedByWhite && !board.getSquareWithCoordinates("c".charCodeAt(0),this.posY).isAffectedByWhite))){
+                this.possibleMoves.push(board.getSquareWithCoordinates("c".charCodeAt(0),this.posY));
+            }
+            if(rigthSquare.getPiece()!=null && rigthSquare.getPiece().name=="Rook" && rigthSquare.getPiece().isFirstMove && rigthSquare.getPiece().isFirstMove && board.getSquareWithCoordinates("f".charCodeAt(0),this.posY).getPiece()==null && board.getSquareWithCoordinates("g".charCodeAt(0),this.posY).getPiece()==null
+            && ((this.team== white && !board.getSquareWithCoordinates("f".charCodeAt(0),this.posY).isAffectedByBlack && !board.getSquareWithCoordinates("g".charCodeAt(0),this.posY).isAffectedByBlack)
+            || (this.team== black && !board.getSquareWithCoordinates("f".charCodeAt(0),this.posY).isAffectedByWhite && !board.getSquareWithCoordinates("g".charCodeAt(0),this.posY).isAffectedByWhite))){
+                this.possibleMoves.push(board.getSquareWithCoordinates("g".charCodeAt(0),this.posY));
+            }
+        }
+    }
+
+    move(x,y){
         if(this.threatened){
             this.threatened = false;
         }
         board.paintKingSquare(this);
-        super.move(i,j,actualBoard);
+        super.move(x,y);
     }
+
     setPossiblePositions(){
         for(let i=-1;i<=1;i++){
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
-                this.propagation(i,j,ip,jp);    
-            }                
+                this.propagation(i,j,ip,jp);
+            }
         }
+        this.CastlingPossible();
     }
 }
 
@@ -244,8 +246,8 @@ class Queen extends Piece {
             for(let j=-1;j<=1;j++){
                 let ip = i;
                 let jp = j;
-                this.propagation(i,j,ip,jp);    
-            }                
+                this.propagation(i,j,ip,jp);
+            }
         }
     }
 }
@@ -263,7 +265,7 @@ class Rook extends Piece {
                 if((i==0 || j==0)){
                     this.propagation(i,j,ip,jp);
                 }
-            }                
+            }
         }
     }
 }
@@ -281,7 +283,7 @@ class Bishop extends Piece {
                 if(i!=0 && j!=0){
                     this.propagation(i,j,ip,jp);
                 }
-            }                
+            }
         }
     }
 }
@@ -300,7 +302,7 @@ class Horse extends Piece {
                 if((i!=0 && j!=0) && (i!=j) && (i!=-j) && (!(i%2) || !(j%2))){
                     this.propagation(i,j,ip,jp);
                 }
-            }                
+            }
         }
     }
 }
@@ -308,30 +310,43 @@ class Horse extends Piece {
 class Pawn extends Piece {
     constructor(posX, posY, team) {
         super(posX,posY,team,"Pawn",true);
-        this.isFirstMove = true;
+        this.rEnPassant = false;
+        this.lEnPassant = false;
         this.setEvents();
     }
-    move(i,j,ip,jp){
-        super.move(i,j,ip,jp);
-        this.isFirstMove = false;
+    move(i,j){
+        super.move(i,j);
         if(this.getPosY() == 8 || this.getPosY() == 1){
             this.promote();
         }
+        if(this.isFirstMove){
+            if(this.getPosY() == 4 || this.getPosY() == 5){
+                let leftSquare = checkPosition(this.posX.charCodeAt(0)-1,this.posY);
+                if(leftSquare!=null && leftSquare.getPiece() != null && leftSquare.getPiece().team != this.team && leftSquare.getPiece().name=="Pawn"){
+                    leftSquare.getPiece().lEnPassant = true;
+                }
+                let rigthSquare = checkPosition(this.posX.charCodeAt(0)+1,this.posY);
+                if(rigthSquare!=null && rigthSquare.getPiece() != null && rigthSquare.getPiece().team != this.team && rigthSquare.getPiece().name=="Pawn"){
+                    rigthSquare.getPiece().rEnPassant = true;
+                }
+            }
+            this.isFirstMove = false;
+        }
     }
 
-    promote(){        
-        board.removePiecesOfList(board.selected);
-        board.removePiecesOfBoard(board.selected);
+    promote(){
+        board.removePiecesOfList(this);
+        board.removePiecesOfBoard(this);
         let Pqueen = new Queen(this.getPosX(),this.getPosY(),this.team);
         board.insertPieces([Pqueen]);
-        board.setAffected();   
-        board.checkKingThreatened(board.selected.team==white?black:white);
+        board.setAffected();
+        board.checkKingThreatened(this.team==white?black:white,true);
     }
 
     propagation(i,j,k){
         let square = checkPosition(this.posX.charCodeAt(0)+i,this.posY+j);
-        if((i==-1 || i==1) && square!=null){                    
-            if(square.piece!=null && (this.team != square.piece.team)){
+        if((i==-1 || i==1) && square!=null){
+            if(square.getPiece()!=null && (this.team != square.getPiece().team)){
                 this.possibleMoves.push(square);
             }
             if(this.team==white){
@@ -339,13 +354,13 @@ class Pawn extends Piece {
             }
             else{
                 board.getSquareWithCoordinates(this.posX.charCodeAt(0)+i,this.posY+j).isAffectedByBlack = true;
-            } 
+            }
         }
         else{
-            if(square!=null && square.piece == null){
+            if(square!=null && square.getPiece() == null){
                 this.possibleMoves.push(square);
-                if(this.isFirstMove && k==0){
-                    this.propagation(i,j+j,1);
+                if(this.isFirstMove && !k){
+                    this.propagation(i,j+j,true);
                 }
             }
         } 
@@ -354,7 +369,13 @@ class Pawn extends Piece {
     setPossiblePositions(){
         let j = -1;
         for(let i=-1;i<=1;i++){
-            this.propagation(i,j + 2*(this.team == white),0);         
+            this.propagation(i,j + 2*(this.team == white),false);         
+        }
+        if(this.lEnPassant){
+            this.possibleMoves.push(checkPosition(this.posX.charCodeAt(0)+1,this.posY + j + 2*(this.team == white)));
+        }
+        if(this.rEnPassant){
+            this.possibleMoves.push(checkPosition(this.posX.charCodeAt(0)-1,this.posY + j + 2*(this.team == white)));
         }
     }
 }

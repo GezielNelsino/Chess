@@ -1,6 +1,10 @@
 import { Square } from "./Square.js";
+import { screen } from "./endGameScreen.js";
+const main = document.querySelector("main");
+
 const white = "w";
 const black = "b";
+
 class Board{
     constructor(){
         this.squares = [
@@ -23,13 +27,22 @@ class Board{
 
     getSquare(piece){
         return this.squares[piece.getPosX().charCodeAt(0)-97][piece.getPosY()-1];
-    }    
+    }
+
     getSquareWithCoordinates(x,y){
         return this.squares[x-97][y-1];
     }
 
+    getTurn(){
+        return this.turn;
+    }
+
+    setTurn(turn){
+        this.turn = turn;
+    }
+    
     insertSquares(list){
-        list.forEach(square => {
+        list.forEach((square) => {
             this.squares[square.getPosX().charCodeAt(0)-97][square.getPosY()-1] = square;
         });
     }
@@ -41,7 +54,8 @@ class Board{
                 if(piece.name=="King"){
                     this.bKing = piece;
                 }
-            }else{
+            }
+            else{
                 this.whitePieces.push(piece);
                 if(piece.name=="King"){
                     this.wKing = piece;
@@ -60,10 +74,10 @@ class Board{
 
     removePiecesOfList(piece){
         if(piece.team == black){
-            let index = this.blackPieces.indexOf(this.getSquare(piece).piece);
+            let index = this.blackPieces.indexOf(piece);
             this.blackPieces.splice(index, 1);
         }else{
-            let index = this.whitePieces.indexOf(this.getSquare(piece).piece);
+            let index = this.whitePieces.indexOf(piece);
             this.whitePieces.splice(index, 1);
         }
     }
@@ -86,6 +100,24 @@ class Board{
         });
     }
 
+    resetEnPassant(team){
+        if(team == white){
+            this.whitePieces.forEach((piece) => {
+                if(piece.name=="Pawn"){
+                    piece.lEnPassant = false;
+                    piece.rEnPassant = false;
+                }
+            });
+        }else{
+            this.blackPieces.forEach((piece) => {
+                if(piece.name=="Pawn"){
+                    piece.lEnPassant = false;
+                    piece.rEnPassant = false;
+                }
+            });
+        }
+    }
+
     setAffected(){
         this.clearMoves();
         this.clearAffected();
@@ -99,104 +131,89 @@ class Board{
         this.bKing.threatened = this.getSquare(this.bKing).isAffectedByWhite;
     }
     
-    checkMate(color){
-        let a=true;
-        if(color==white){
-            this.whitePieces.forEach((piece) => {        
-                piece.getPossiblePositions();
-            if(piece.validMoves.length>0){
-                a = false;
-            }
-            });
-        }
-        else{
-            this.blackPieces.forEach((piece) => {
-                piece.getPossiblePositions();
-                if(piece.validMoves.length>0){
-                    a = false;
+    checkMoves(color){
+        for(let i=0;i<8;i++){
+            for(let j = 0; j<8;j++){
+                let square = this.squares[i][j];
+                if(square.piece != null && square.piece.team==color){
+                    square.piece.getPossiblePositions();
+                    if(square.piece.validMoves.length>0){
+                        return false;
+                    }
                 }
-            });
-            }    
-        if(a){
-            if(color == white && this.getSquare(this.wKing).isAffectedByBlack || color == black && this.getSquare(this.bKing).isAffectedByWhite){
-                console.log("mate");
-            }else{
-                console.log("afogado");
             }
-        }else{
-            console.log("notMate");
         }
-        return a;
+        return true;
+    }
+
+    checkMate(color){
+        if(this.checkMoves(color)){
+            if(color == white && this.getSquare(this.wKing).isAffectedByBlack || color == black && this.getSquare(this.bKing).isAffectedByWhite){
+                screen.setWinner(true,color=="b"?"WHITE":"BLACK");
+            }else{
+                screen.setWinner(true,"tie");
+            }
+        }
     }
 
     checkKingThreatened(color){
-        this.checkMate(color);
         if(color == white && this.getSquare(this.wKing).isAffectedByBlack){
             this.wKing.threatened = true;
-            this.paintKingSquare(this.wKing);
-        }else{            
-            this.wKing.threatened = false;
-            this.paintKingSquare(this.wKing);
         }
+        else{
+            this.wKing.threatened = false;
+        }
+        this.paintKingSquare(this.wKing);
         if(color == black && this.getSquare(this.bKing).isAffectedByWhite){
             this.bKing.threatened = true;
-            this.paintKingSquare(this.bKing);
-        }else{
-            this.bKing.threatened = false;
-            this.paintKingSquare(this.bKing);
         }
+        else{
+            this.bKing.threatened = false;
+        }
+        this.paintKingSquare(this.bKing);
+        this.checkMate(color);
     }
 
     paintKingSquare(king){
         if(king.threatened){
             this.getSquare(king).value.style.background = "red";
-        }else{
+        }
+        else{
             this.getSquare(king).value.style.background = !this.getSquare(king).color?"white":"rgb(88, 83, 83)";
         }
     }
 
-    printKing(){
-        console.log(this.bKing);
-        console.log(this.wKing);
-    }
-
-    print(){
-        this.squares.forEach(square => {
-            console.log(square);  
-        });
-        console.log("Peças:");
-        console.log(this.blackPieces);
-        console.log(this.whitePieces);
-    }
-};
-
-let board = new Board();
-
-const main = document.querySelector("main");
-function createSquares(){
-    var paint;
-    for(var i=8; i>=1;i--){
-        paint=i%2;
-        for(var j=1; j<=8;j++){
-            let div = document.createElement("div");
-            div.setAttribute("id",`${String.fromCharCode(97 + j-1)}${i}`);
-            div.addEventListener("click",(e) => {
-                if (e.target !== e.currentTarget)
-                    return;
-                document.querySelectorAll(".circulo").forEach(element => element.remove());
-                board.selected = null;
-            })
-            if(paint){
-                div.style.background = "rgb(88, 83, 83)";
-                paint=false;   
-            }else{
-                paint=true;
+    createSquares(){
+        var paint;
+        for(var i=8; i>=1;i--){
+            paint=i%2;
+            for(var j=1; j<=8;j++){
+                let squareValue = document.createElement("div");
+                squareValue.setAttribute("id",`${String.fromCharCode(97 + j-1)}${i}`);
+                squareValue.addEventListener("click",(e) => {
+                    if (e.target == e.currentTarget){
+                    document.querySelectorAll(".circulo").forEach(element => element.remove());
+                    this.selected = null;   
+                    }
+                })
+                if(paint){
+                    squareValue.style.background = "rgb(88, 83, 83)";
+                }
+                paint = !paint;
+                let square = new Square(String.fromCharCode(97 + j-1),i,squareValue,!paint);
+                this.insertSquares([square]);
+                main.appendChild(squareValue);
             }
-            let square = new Square(String.fromCharCode(97 + j-1),i,div,!paint);
-            board.insertSquares([square]);
-            main.appendChild(div);
         }
     }
-}
-createSquares();
+
+    startGame(){
+        this.setAffected();
+        this.checkKingThreatened(white);
+        this.checkKingThreatened(black);
+    }
+
+};
+let board = new Board();
+board.createSquares();
 export {board};
