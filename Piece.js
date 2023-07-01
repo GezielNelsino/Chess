@@ -31,7 +31,7 @@ class Piece {
         this.isLimited = isLimited;
         this.value = document.createElement("img");
         this.value.setAttribute("team",this.team);
-        this.value.src = `./images/${this.team}${this.name}.png`;
+        this.value.src = `./images/${this.team}${this.name}.svg`;
         this.isFirstMove = true;
         this.possibleMoves = [];
         this.validMoves = [];
@@ -168,6 +168,11 @@ class Piece {
         return valid;
     }
 
+    trowAnimation(){
+        this.value.classList.toggle("shake");
+        setTimeout(() => (this.value.classList.remove("shake")), 300);
+    }
+
     setEvents(){
         this.value.addEventListener("click",() =>{
             if(board.getTurn() && this.team==white || !board.getTurn() && this.team==black){
@@ -186,6 +191,12 @@ class Piece {
                     document.querySelectorAll(".circulo").forEach(element => element.remove());
                     board.selected = null;
                 }
+                if(this.validMoves.length==0){
+                    this.trowAnimation();
+                }
+            }
+            else{
+                this.trowAnimation();
             }
         });
         this.setPosition();

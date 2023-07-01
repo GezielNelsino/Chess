@@ -131,11 +131,11 @@ class Board{
         this.bKing.threatened = this.getSquare(this.bKing).isAffectedByWhite;
     }
     
-    checkMoves(color){
+    isGameFinished(team){
         for(let i=0;i<8;i++){
             for(let j = 0; j<8;j++){
                 let square = this.squares[i][j];
-                if(square.piece != null && square.piece.team==color){
+                if(square.piece != null && square.piece.team==team){
                     square.piece.getPossiblePositions();
                     if(square.piece.validMoves.length>0){
                         return false;
@@ -146,41 +146,36 @@ class Board{
         return true;
     }
 
-    checkMate(color){
-        if(this.checkMoves(color)){
-            if(color == white && this.getSquare(this.wKing).isAffectedByBlack || color == black && this.getSquare(this.bKing).isAffectedByWhite){
-                screen.setWinner(true,color=="b"?"WHITE":"BLACK");
+    checkMate(team){
+        if(this.isGameFinished(team)){
+            if(team == white && this.getSquare(this.wKing).isAffectedByBlack || team == black && this.getSquare(this.bKing).isAffectedByWhite){
+                screen.setWinner(true,team=="b"?"WHITE":"BLACK");
             }else{
                 screen.setWinner(true,"tie");
             }
         }
     }
 
-    checkKingThreatened(color){
-        if(color == white && this.getSquare(this.wKing).isAffectedByBlack){
+    checkKingThreatened(team){
+        if(team == white && this.getSquare(this.wKing).isAffectedByBlack){
             this.wKing.threatened = true;
         }
         else{
             this.wKing.threatened = false;
         }
         this.paintKingSquare(this.wKing);
-        if(color == black && this.getSquare(this.bKing).isAffectedByWhite){
+        if(team == black && this.getSquare(this.bKing).isAffectedByWhite){
             this.bKing.threatened = true;
         }
         else{
             this.bKing.threatened = false;
         }
         this.paintKingSquare(this.bKing);
-        this.checkMate(color);
+        this.checkMate(team);
     }
 
     paintKingSquare(king){
-        if(king.threatened){
-            this.getSquare(king).value.style.background = "red";
-        }
-        else{
-            this.getSquare(king).value.style.background = !this.getSquare(king).color?"white":"rgb(88, 83, 83)";
-        }
+        this.getSquare(king).value.setAttribute("check",king.threatened);
     }
 
     createSquares(){
@@ -197,7 +192,7 @@ class Board{
                     }
                 })
                 if(paint){
-                    squareValue.style.background = "rgb(88, 83, 83)";
+                    squareValue.setAttribute("class","graySquare");
                 }
                 paint = !paint;
                 let square = new Square(String.fromCharCode(97 + j-1),i,squareValue,!paint);
